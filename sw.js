@@ -4,9 +4,6 @@ const urlsToCache = [
   '/merge-conquer/index.html',
   '/merge-conquer/icon-192.png',
   '/merge-conquer/icon-512.png'
-  // Ако имаш звуци, додај ги овде:
-  // '/merge-conquer/sounds/merge.mp3',
-  // '/merge-conquer/sounds/buy.mp3',
 ];
 
 self.addEventListener('install', event => {
