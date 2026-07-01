@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="mk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Merge & Conquer</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+  body {
+    background: #0f0f1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    touch-action: manipulation;
+  }
+  #game {
+    max-width: 480px;
+    width: 100%;
+    padding: 16px;
+    background: #16162a;
+    border-radius: 24px;
+    box-shadow: 0 0 40px rgba(100,150,255,0.1);
+    border: 1px solid #2a2a4a;
+  }
+  #top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #aac8ff;
+    font-size: 15px;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #2a2a4a;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #top span { color: #f5d742; }
+  .btn {
+    background: #2a2a4a;
+    border: 1px solid #4a4a7a;
+    color: #aac8ff;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .btn:hover { background: #3a3a6a; }
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .cell {
+    aspect-ratio: 1 / 1;
+    background: #1e1e36;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: 0.15s;
+    border: 2px solid transparent;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.4);
+    position: relative;
+  }
+  .cell.selected { border-color: #f5d742; box-shadow: 0 0 20px rgba(245,215,66,0.3); }
+  .cell.has-unit { background: #25254a; }
+  .cell .level {
+    font-size: 13px;
+    position: absolute;
+    bottom: 2px;
+    right: 6px;
+    color: #8ab4f8;
+    opacity: 0.6;
+  }
+  /* бои според ниво */
+  .cell.lv1 { background: #2a4a6a; }
+  .cell.lv2 { background: #2a6a4a; }
+  .cell.lv3 { background: #6a4a2a; }
+  .cell.lv4 { background: #4a2a6a; }
+  .cell.lv5 { background: #6a2a4a; }
+  .cell.lv6 { background: #2a6a6a; }
+  .cell.lv7 { background: #6a4a6a; }
+  .cell.lv8 { background: #4a6a2a; }
+  .cell.lv9 { background: #6a2a2a; }
+  .cell.lv10 { background: #2a2a6a; }
+
+  #info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #8ab4f8;
+    margin: 6px 0 12px 0;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #info .stat { background: #1a1a32; padding: 4px 12px; border-radius: 30px; }
+  #shop {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+  }
+  .shop-btn {
+    background: #2a2a4a;
+    border: 1px solid #4a4a7a;
+    color: #aac8ff;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    flex: 1;
+    min-width: 80px;
+  }
+  .shop-btn:hover { background: #3a3a6a; }
+  .shop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #prestige-area {
+    margin-top: 12px;
+    padding: 12px;
+    background: #1a1a32;
+    border-radius: 16px;
+    border: 1px solid #2a2a4a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #prestige-area .label { color: #8ab4f8; font-size: 13px; }
+  #prestige-area .value { color: #f5d742; font-weight: 700; }
+
+  @media (max-width: 480px) {
+    .cell { font-size: 18px; }
+    .shop-btn { font-size: 12px; padding: 6px 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+
+  <div id="top">
+    <div>🪙 <span id="goldDisplay">0</span></div>
+    <div>⚡ <span id="productionDisplay">0</span>/s</div>
+    <button class="btn" id="resetBtn">⟳</button>
+  </div>
+
+  <div id="grid"></div>
+
+  <div id="info">
+    <div class="stat">📦 <span id="unitCount">0</span></div>
+    <div class="stat">🏆 <span id="prestigeLevel">0</span></div>
+    <div class="stat">🎯 <span id="totalGold">0</span></div>
+  </div>
+
+  <div id="shop">
+    <button class="shop-btn" id="buyUnit">🛡️ Купи војник (50)</button>
+  </div>
+
+  <div id="prestige-area">
+    <div>
+      <div class="label">🌟 Престиж</div>
+      <div class="value" id="prestigeBonus">+0%</div>
+    </div>
+    <button class="btn" id="prestigeBtn" style="background:#4a2a6a; border-color:#6a4a8a;">🔄 Ресетирај (престиж)</button>
+  </div>
+
+</div>
+
+<script>
+// ─── ИГРАЧКИ ПРОМЕНЛИВИ ──────────────────────────────────────
+const GRID_SIZE = 5;
+const MAX_LEVEL = 10;
+let grid = []; // 2D array, each cell: { level: 0, unit: null } 0 = empty
+let gold = 0;
+let totalGoldEarned = 0; // за престиж
+let prestigeLevel = 0;
+let prestigeBonus = 1; // множител (1 + 0.05 * prestigeLevel)
+let selectedCell = null; // { row, col } или null
+let production = 0; // злато/сек
+
+// ─── ИНИЦИЈАЛИЗАЦИЈА ────────────────────────────────────────
+function initGrid() {
+  grid = [];
+  for (let r = 0; r < GRID_SIZE; r++) {
+    grid[r] = [];
+    for (let c = 0; c < GRID_SIZE; c++) {
+      grid[r][c] = { level: 0, unit: null };
+    }
+  }
+  // Стави неколку почетни војници
+  for (let i = 0; i < 3; i++) {
+    const empty = findEmptyCell();
+    if (empty) {
+      const { row, col } = empty;
+      grid[row][col].level = 1;
+      grid[row][col].unit = { level: 1 };
+    }
+  }
+  calculateProduction();
+  render();
+}
+
+function findEmptyCell() {
+  const empties = [];
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (grid[r][c].level === 0) empties.push({ row: r, col: c });
+    }
+  }
+  if (empties.length === 0) return null;
+  return empties[Math.floor(Math.random() * empties.length)];
+}
+
+// ─── ПРОИЗВОДСТВО ──────────────────────────────────────────────
+function calculateProduction() {
+  let total = 0;
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const lv = grid[r][c].level;
+      if (lv > 0) {
+        total += lv * 2; // ниво 1 → 2 злато/сек, ниво 2 → 4, итн.
+      }
+    }
+  }
+  production = total * prestigeBonus;
+  updateUI();
+}
+
+// ─── СПОЈУВАЊЕ ──────────────────────────────────────────────────
+function tryMerge(row1, col1, row2, col2) {
+  if (row1 === row2 && col1 === col2) return false;
+  const cell1 = grid[row1][col1];
+  const cell2 = grid[row2][col2];
+  if (cell1.level === 0 || cell2.level === 0) return false;
+  if (cell1.level !== cell2.level) return false;
+  if (cell1.level >= MAX_LEVEL) return false; // не може над 10
+
+  // Спој ги
+  const newLevel = cell1.level + 1;
+  cell1.level = 0;
+  cell1.unit = null;
+  cell2.level = newLevel;
+  cell2.unit = { level: newLevel };
+  // Бонус: добиј малку злато при спојување
+  gold += newLevel * 2;
+  totalGoldEarned += newLevel * 2;
+  calculateProduction();
+  render();
+  return true;
+}
+
+// ─── КУПИ ВОЈНИК ──────────────────────────────────────────────
+function buyUnit() {
+  const cost = 50;
+  if (gold < cost) return;
+  const empty = findEmptyCell();
+  if (!empty) return;
+  gold -= cost;
+  grid[empty.row][empty.col].level = 1;
+  grid[empty.row][empty.col].unit = { level: 1 };
+  calculateProduction();
+  render();
+}
+
+// ─── ПРЕСТИЖ ────────────────────────────────────────────────────
+function performPrestige() {
+  // Потребно: вкупно заработено злато > 1000 (или друго)
+  if (totalGoldEarned < 1000) {
+    alert('Потребно е најмалку 1000 злато за престиж.');
+    return;
+  }
+  // Ресетирај сè, но зголеми престиж бонус
+  prestigeLevel++;
+  prestigeBonus = 1 + prestigeLevel * 0.05; // +5% по престиж
+  // Ресетирај злато и единици
+  gold = 0;
+  totalGoldEarned = 0;
+  initGrid(); // ќе реиницијализира со почетни војници
+  calculateProduction();
+  render();
+  alert(`🌟 Престиж успешен! Бонус: +${Math.round((prestigeBonus-1)*100)}%`);
+}
+
+// ─── РЕНДЕРИРАЊЕ ──────────────────────────────────────────────
+function render() {
+  const gridEl = document.getElementById('grid');
+  gridEl.innerHTML = '';
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const lv = grid[r][c].level;
+      if (lv > 0) {
+        cell.classList.add('has-unit', `lv${lv}`);
+        cell.textContent = getEmoji(lv);
+        // прикажи ниво
+        const levelSpan = document.createElement('span');
+        levelSpan.className = 'level';
+        levelSpan.textContent = lv;
+        cell.appendChild(levelSpan);
+      } else {
+        cell.textContent = '▢';
+        cell.style.color = '#2a2a4a';
+      }
+      if (selectedCell && selectedCell.row === r && selectedCell.col === c) {
+        cell.classList.add('selected');
+      }
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.addEventListener('click', () => onCellClick(r, c));
+      gridEl.appendChild(cell);
+    }
+  }
+  // UI
+  document.getElementById('goldDisplay').textContent = Math.floor(gold);
+  document.getElementById('productionDisplay').textContent = (production).toFixed(1);
+  document.getElementById('unitCount').textContent = countUnits();
+  document.getElementById('prestigeLevel').textContent = prestigeLevel;
+  document.getElementById('totalGold').textContent = Math.floor(totalGoldEarned);
+  document.getElementById('prestigeBonus').textContent = `+${Math.round((prestigeBonus-1)*100)}%`;
+}
+
+function getEmoji(level) {
+  const emojis = ['', '⚔️', '🛡️', '🗡️', '🏹', '🔥', '⚡', '💎', '🌟', '👑', '🚀'];
+  return emojis[level] || '⚔️';
+}
+
+function countUnits() {
+  let count = 0;
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (grid[r][c].level > 0) count++;
+    }
+  }
+  return count;
+}
+
+// ─── КЛИК НА ПОЛЕ ──────────────────────────────────────────────
+function onCellClick(row, col) {
+  const lv = grid[row][col].level;
+  if (lv === 0) {
+    // Ако нема војник, а има селектиран – обид за спојување? Не може на празно.
+    selectedCell = null;
+    render();
+    return;
+  }
+  // Ако нема селектиран војник, селектирај го овој
+  if (selectedCell === null) {
+    selectedCell = { row, col };
+    render();
+    return;
+  }
+  // Ако веќе е селектиран истиот, деселектирај
+  if (selectedCell.row === row && selectedCell.col === col) {
+    selectedCell = null;
+    render();
+    return;
+  }
+  // Обиди се да споиш селектираниот и кликнатиот
+  const success = tryMerge(selectedCell.row, selectedCell.col, row, col);
+  selectedCell = null;
+  if (!success) {
+    // Ако не успеа, селектирај го новиот
+    selectedCell = { row, col };
+    render();
+  } else {
+    render();
+  }
+}
+
+// ─── АЖУРИРАЊЕ UI (се повикува од тајмер) ──────────────────
+function updateUI() {
+  document.getElementById('goldDisplay').textContent = Math.floor(gold);
+  document.getElementById('productionDisplay').textContent = (production).toFixed(1);
+  document.getElementById('unitCount').textContent = countUnits();
+  document.getElementById('totalGold').textContent = Math.floor(totalGoldEarned);
+  document.getElementById('prestigeBonus').textContent = `+${Math.round((prestigeBonus-1)*100)}%`;
+}
+
+// ─── ТАЈМЕР ЗА ЗЛАТО ──────────────────────────────────────────
+let lastTick = Date.now();
+function gameLoop() {
+  const now = Date.now();
+  const delta = (now - lastTick) / 1000; // секунди
+  lastTick = now;
+  if (delta > 0 && !isNaN(delta) && delta < 1) {
+    const earn = production * delta;
+    gold += earn;
+    totalGoldEarned += earn;
+  }
+  updateUI();
+  requestAnimationFrame(gameLoop);
+}
+
+// ─── ДОДАТНИ КОНТРОЛИ ─────────────────────────────────────────
+document.getElementById('buyUnit').addEventListener('click', buyUnit);
+document.getElementById('prestigeBtn').addEventListener('click', performPrestige);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Ресетирај ја играта?')) {
+    initGrid();
+    gold = 0;
+    totalGoldEarned = 0;
+    prestigeLevel = 0;
+    prestigeBonus = 1;
+    selectedCell = null;
+    calculateProduction();
+    render();
+  }
+});
+
+// ─── СТАРТ ─────────────────────────────────────────────────────
+initGrid();
+gameLoop();
+</script>
+</body>
+</html>
