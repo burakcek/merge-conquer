@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="mk">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -87,7 +87,6 @@
     color: #8ab4f8;
     opacity: 0.6;
   }
-  /* бои според ниво */
   .cell.lv1 { background: #2a4a6a; }
   .cell.lv2 { background: #2a6a4a; }
   .cell.lv3 { background: #6a4a2a; }
@@ -171,32 +170,32 @@
   </div>
 
   <div id="shop">
-    <button class="shop-btn" id="buyUnit">🛡️ Купи војник (50)</button>
+    <button class="shop-btn" id="buyUnit">🛡️ Buy Soldier (50)</button>
   </div>
 
   <div id="prestige-area">
     <div>
-      <div class="label">🌟 Престиж</div>
+      <div class="label">🌟 Prestige</div>
       <div class="value" id="prestigeBonus">+0%</div>
     </div>
-    <button class="btn" id="prestigeBtn" style="background:#4a2a6a; border-color:#6a4a8a;">🔄 Ресетирај (престиж)</button>
+    <button class="btn" id="prestigeBtn" style="background:#4a2a6a; border-color:#6a4a8a;">🔄 Reset (Prestige)</button>
   </div>
 
 </div>
 
 <script>
-// ─── ИГРАЧКИ ПРОМЕНЛИВИ ──────────────────────────────────────
+// ─── GAME STATE ──────────────────────────────────────────────
 const GRID_SIZE = 5;
 const MAX_LEVEL = 10;
-let grid = []; // 2D array, each cell: { level: 0, unit: null } 0 = empty
+let grid = [];
 let gold = 0;
-let totalGoldEarned = 0; // за престиж
+let totalGoldEarned = 0;
 let prestigeLevel = 0;
-let prestigeBonus = 1; // множител (1 + 0.05 * prestigeLevel)
-let selectedCell = null; // { row, col } или null
-let production = 0; // злато/сек
+let prestigeBonus = 1;
+let selectedCell = null;
+let production = 0;
 
-// ─── ИНИЦИЈАЛИЗАЦИЈА ────────────────────────────────────────
+// ─── INIT ──────────────────────────────────────────────────────
 function initGrid() {
   grid = [];
   for (let r = 0; r < GRID_SIZE; r++) {
@@ -205,7 +204,7 @@ function initGrid() {
       grid[r][c] = { level: 0, unit: null };
     }
   }
-  // Стави неколку почетни војници
+  // Place 3 starting soldiers
   for (let i = 0; i < 3; i++) {
     const empty = findEmptyCell();
     if (empty) {
@@ -229,37 +228,33 @@ function findEmptyCell() {
   return empties[Math.floor(Math.random() * empties.length)];
 }
 
-// ─── ПРОИЗВОДСТВО ──────────────────────────────────────────────
+// ─── PRODUCTION ──────────────────────────────────────────────
 function calculateProduction() {
   let total = 0;
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       const lv = grid[r][c].level;
-      if (lv > 0) {
-        total += lv * 2; // ниво 1 → 2 злато/сек, ниво 2 → 4, итн.
-      }
+      if (lv > 0) total += lv * 2;
     }
   }
   production = total * prestigeBonus;
   updateUI();
 }
 
-// ─── СПОЈУВАЊЕ ──────────────────────────────────────────────────
+// ─── MERGE ──────────────────────────────────────────────────────
 function tryMerge(row1, col1, row2, col2) {
   if (row1 === row2 && col1 === col2) return false;
   const cell1 = grid[row1][col1];
   const cell2 = grid[row2][col2];
   if (cell1.level === 0 || cell2.level === 0) return false;
   if (cell1.level !== cell2.level) return false;
-  if (cell1.level >= MAX_LEVEL) return false; // не може над 10
+  if (cell1.level >= MAX_LEVEL) return false;
 
-  // Спој ги
   const newLevel = cell1.level + 1;
   cell1.level = 0;
   cell1.unit = null;
   cell2.level = newLevel;
   cell2.unit = { level: newLevel };
-  // Бонус: добиј малку злато при спојување
   gold += newLevel * 2;
   totalGoldEarned += newLevel * 2;
   calculateProduction();
@@ -267,7 +262,7 @@ function tryMerge(row1, col1, row2, col2) {
   return true;
 }
 
-// ─── КУПИ ВОЈНИК ──────────────────────────────────────────────
+// ─── BUY ──────────────────────────────────────────────────────
 function buyUnit() {
   const cost = 50;
   if (gold < cost) return;
@@ -280,26 +275,23 @@ function buyUnit() {
   render();
 }
 
-// ─── ПРЕСТИЖ ────────────────────────────────────────────────────
+// ─── PRESTIGE ──────────────────────────────────────────────────
 function performPrestige() {
-  // Потребно: вкупно заработено злато > 1000 (или друго)
   if (totalGoldEarned < 1000) {
-    alert('Потребно е најмалку 1000 злато за престиж.');
+    alert('Need at least 1000 total gold to prestige.');
     return;
   }
-  // Ресетирај сè, но зголеми престиж бонус
   prestigeLevel++;
-  prestigeBonus = 1 + prestigeLevel * 0.05; // +5% по престиж
-  // Ресетирај злато и единици
+  prestigeBonus = 1 + prestigeLevel * 0.05;
   gold = 0;
   totalGoldEarned = 0;
-  initGrid(); // ќе реиницијализира со почетни војници
+  initGrid();
   calculateProduction();
   render();
-  alert(`🌟 Престиж успешен! Бонус: +${Math.round((prestigeBonus-1)*100)}%`);
+  alert(`🌟 Prestige successful! Bonus: +${Math.round((prestigeBonus-1)*100)}%`);
 }
 
-// ─── РЕНДЕРИРАЊЕ ──────────────────────────────────────────────
+// ─── RENDER ────────────────────────────────────────────────────
 function render() {
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
@@ -311,7 +303,6 @@ function render() {
       if (lv > 0) {
         cell.classList.add('has-unit', `lv${lv}`);
         cell.textContent = getEmoji(lv);
-        // прикажи ниво
         const levelSpan = document.createElement('span');
         levelSpan.className = 'level';
         levelSpan.textContent = lv;
@@ -329,7 +320,6 @@ function render() {
       gridEl.appendChild(cell);
     }
   }
-  // UI
   document.getElementById('goldDisplay').textContent = Math.floor(gold);
   document.getElementById('productionDisplay').textContent = (production).toFixed(1);
   document.getElementById('unitCount').textContent = countUnits();
@@ -353,32 +343,27 @@ function countUnits() {
   return count;
 }
 
-// ─── КЛИК НА ПОЛЕ ──────────────────────────────────────────────
+// ─── CLICK HANDLER ────────────────────────────────────────────
 function onCellClick(row, col) {
   const lv = grid[row][col].level;
   if (lv === 0) {
-    // Ако нема војник, а има селектиран – обид за спојување? Не може на празно.
     selectedCell = null;
     render();
     return;
   }
-  // Ако нема селектиран војник, селектирај го овој
   if (selectedCell === null) {
     selectedCell = { row, col };
     render();
     return;
   }
-  // Ако веќе е селектиран истиот, деселектирај
   if (selectedCell.row === row && selectedCell.col === col) {
     selectedCell = null;
     render();
     return;
   }
-  // Обиди се да споиш селектираниот и кликнатиот
   const success = tryMerge(selectedCell.row, selectedCell.col, row, col);
   selectedCell = null;
   if (!success) {
-    // Ако не успеа, селектирај го новиот
     selectedCell = { row, col };
     render();
   } else {
@@ -386,7 +371,7 @@ function onCellClick(row, col) {
   }
 }
 
-// ─── АЖУРИРАЊЕ UI (се повикува од тајмер) ──────────────────
+// ─── UI UPDATE (called by timer) ─────────────────────────────
 function updateUI() {
   document.getElementById('goldDisplay').textContent = Math.floor(gold);
   document.getElementById('productionDisplay').textContent = (production).toFixed(1);
@@ -395,11 +380,11 @@ function updateUI() {
   document.getElementById('prestigeBonus').textContent = `+${Math.round((prestigeBonus-1)*100)}%`;
 }
 
-// ─── ТАЈМЕР ЗА ЗЛАТО ──────────────────────────────────────────
+// ─── GAME LOOP (idle gold) ────────────────────────────────────
 let lastTick = Date.now();
 function gameLoop() {
   const now = Date.now();
-  const delta = (now - lastTick) / 1000; // секунди
+  const delta = (now - lastTick) / 1000;
   lastTick = now;
   if (delta > 0 && !isNaN(delta) && delta < 1) {
     const earn = production * delta;
@@ -410,11 +395,11 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// ─── ДОДАТНИ КОНТРОЛИ ─────────────────────────────────────────
+// ─── EVENT LISTENERS ──────────────────────────────────────────
 document.getElementById('buyUnit').addEventListener('click', buyUnit);
 document.getElementById('prestigeBtn').addEventListener('click', performPrestige);
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Ресетирај ја играта?')) {
+  if (confirm('Reset game?')) {
     initGrid();
     gold = 0;
     totalGoldEarned = 0;
@@ -426,9 +411,16 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   }
 });
 
-// ─── СТАРТ ─────────────────────────────────────────────────────
+// ─── START ─────────────────────────────────────────────────────
 initGrid();
 gameLoop();
+
+// PWA Service Worker registration (add at the end of body)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/merge-conquer/sw.js')
+    .then(() => console.log('✅ SW registered'))
+    .catch(err => console.log('❌ SW registration failed:', err));
+}
 </script>
 </body>
 </html>
