@@ -1,7 +1,7 @@
 {
   "name": "Merge & Conquer",
   "short_name": "MergeConquer",
-  "description": "Spojuvaj vojnici, zarabotuvaj zlato, osvojuvaј svetovi!",
+  "description": "Merge soldiers, earn gold, conquer worlds!",
   "start_url": "/merge-conquer/",
   "display": "standalone",
   "background_color": "#0f0f1a",
