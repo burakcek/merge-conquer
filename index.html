@@ -184,6 +184,19 @@
 </div>
 
 <script>
+// ─── SOUND SYSTEM ─────────────────────────────────────────────
+// These are the paths to your sound files in the 'sounds/' folder.
+const sound = {
+  merge: new Audio('sounds/merge.mp3'),
+  buy: new Audio('sounds/buy.mp3'),
+  prestige: new Audio('sounds/prestige.mp3'),
+  click: new Audio('sounds/click.mp3'),
+  error: new Audio('sounds/error.mp3'),
+};
+
+// Preload sounds (optional, helps with responsiveness)
+Object.values(sound).forEach(audio => audio.load());
+
 // ─── GAME STATE ──────────────────────────────────────────────
 const GRID_SIZE = 5;
 const MAX_LEVEL = 10;
@@ -195,6 +208,15 @@ let prestigeBonus = 1;
 let selectedCell = null;
 let production = 0;
 
+// ─── HELPERS ──────────────────────────────────────────────────
+function playSound(name) {
+  const audio = sound[name];
+  if (audio) {
+    audio.currentTime = 0;
+    audio.play().catch(() => {}); // ignore errors (e.g., if file missing)
+  }
+}
+
 // ─── INIT ──────────────────────────────────────────────────────
 function initGrid() {
   grid = [];
@@ -204,7 +226,6 @@ function initGrid() {
       grid[r][c] = { level: 0, unit: null };
     }
   }
-  // Place 3 starting soldiers
   for (let i = 0; i < 3; i++) {
     const empty = findEmptyCell();
     if (empty) {
@@ -228,7 +249,6 @@ function findEmptyCell() {
   return empties[Math.floor(Math.random() * empties.length)];
 }
 
-// ─── PRODUCTION ──────────────────────────────────────────────
 function calculateProduction() {
   let total = 0;
   for (let r = 0; r < GRID_SIZE; r++) {
@@ -241,7 +261,6 @@ function calculateProduction() {
   updateUI();
 }
 
-// ─── MERGE ──────────────────────────────────────────────────────
 function tryMerge(row1, col1, row2, col2) {
   if (row1 === row2 && col1 === col2) return false;
   const cell1 = grid[row1][col1];
@@ -249,7 +268,6 @@ function tryMerge(row1, col1, row2, col2) {
   if (cell1.level === 0 || cell2.level === 0) return false;
   if (cell1.level !== cell2.level) return false;
   if (cell1.level >= MAX_LEVEL) return false;
-
   const newLevel = cell1.level + 1;
   cell1.level = 0;
   cell1.unit = null;
@@ -257,28 +275,36 @@ function tryMerge(row1, col1, row2, col2) {
   cell2.unit = { level: newLevel };
   gold += newLevel * 2;
   totalGoldEarned += newLevel * 2;
+  // Play merge sound
+  playSound('merge');
   calculateProduction();
   render();
   return true;
 }
 
-// ─── BUY ──────────────────────────────────────────────────────
 function buyUnit() {
   const cost = 50;
-  if (gold < cost) return;
+  if (gold < cost) {
+    playSound('error');
+    return;
+  }
   const empty = findEmptyCell();
-  if (!empty) return;
+  if (!empty) {
+    playSound('error');
+    return;
+  }
   gold -= cost;
   grid[empty.row][empty.col].level = 1;
   grid[empty.row][empty.col].unit = { level: 1 };
+  playSound('buy');
   calculateProduction();
   render();
 }
 
-// ─── PRESTIGE ──────────────────────────────────────────────────
 function performPrestige() {
   if (totalGoldEarned < 1000) {
     alert('Need at least 1000 total gold to prestige.');
+    playSound('error');
     return;
   }
   prestigeLevel++;
@@ -288,10 +314,10 @@ function performPrestige() {
   initGrid();
   calculateProduction();
   render();
-  alert(`🌟 Prestige successful! Bonus: +${Math.round((prestigeBonus-1)*100)}%`);
+  playSound('prestige');
+  alert(`Prestige successful! Bonus: +${Math.round((prestigeBonus-1)*100)}%`);
 }
 
-// ─── RENDER ────────────────────────────────────────────────────
 function render() {
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
@@ -343,35 +369,17 @@ function countUnits() {
   return count;
 }
 
-// ─── CLICK HANDLER ────────────────────────────────────────────
 function onCellClick(row, col) {
+  playSound('click'); // play click sound on any cell tap
   const lv = grid[row][col].level;
-  if (lv === 0) {
-    selectedCell = null;
-    render();
-    return;
-  }
-  if (selectedCell === null) {
-    selectedCell = { row, col };
-    render();
-    return;
-  }
-  if (selectedCell.row === row && selectedCell.col === col) {
-    selectedCell = null;
-    render();
-    return;
-  }
+  if (lv === 0) { selectedCell = null; render(); return; }
+  if (selectedCell === null) { selectedCell = { row, col }; render(); return; }
+  if (selectedCell.row === row && selectedCell.col === col) { selectedCell = null; render(); return; }
   const success = tryMerge(selectedCell.row, selectedCell.col, row, col);
   selectedCell = null;
-  if (!success) {
-    selectedCell = { row, col };
-    render();
-  } else {
-    render();
-  }
+  if (!success) { selectedCell = { row, col }; render(); } else { render(); }
 }
 
-// ─── UI UPDATE (called by timer) ─────────────────────────────
 function updateUI() {
   document.getElementById('goldDisplay').textContent = Math.floor(gold);
   document.getElementById('productionDisplay').textContent = (production).toFixed(1);
@@ -401,10 +409,7 @@ document.getElementById('prestigeBtn').addEventListener('click', performPrestige
 document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Reset game?')) {
     initGrid();
-    gold = 0;
-    totalGoldEarned = 0;
-    prestigeLevel = 0;
-    prestigeBonus = 1;
+    gold = 0; totalGoldEarned = 0; prestigeLevel = 0; prestigeBonus = 1;
     selectedCell = null;
     calculateProduction();
     render();
@@ -415,9 +420,12 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 initGrid();
 gameLoop();
 
-// PWA Service Worker registration (add at the end of body)
+// ─── PWA SERVICE WORKER REGISTRATION ─────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/merge-conquer/sw.js')
+  // Change the path below to match your repo name!
+  // If your repo is 'merge-conquer', keep as is; if different, change.
+  const swPath = '/merge-conquer/sw.js';
+  navigator.serviceWorker.register(swPath)
     .then(() => console.log('✅ SW registered'))
     .catch(err => console.log('❌ SW registration failed:', err));
 }
